@@ -5,6 +5,12 @@
 #include "../headers/global.h"
 #include "../headers/errors.h"
 #include "../headers/preproc.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "../headers/global.h"
+#include "../headers/errors.h"
+#include "../headers/preproc.h"
 
 #define MACRO_START "mcro"
 #define MACRO_END "mcroend"
@@ -18,7 +24,7 @@ char* my_strdup(const char* src) {
     char* copy;
     size_t len;
     if (!src) return NULL;
-    len = strlen(src) + 1;
+    len = strlen(src) + 1;//hhhh
     copy = (char*)malloc(len);
     if (copy) memcpy(copy, src, len);
     return copy;
