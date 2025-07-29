@@ -57,9 +57,9 @@ Macro* findMacro(const char* name);
 
 /*
  * Adds a new macro with the given name to the macro list.
- * Returns nonzero on success, zero if the macro already exists or on failure.
+ * Returns pointer to Macro, or NULL if the macro already exists or on failure.
  */
-int addMacro(const char* name);
+Macro* addMacro(const char* name);
 
 /*
  * Adds a line to the specified macro's content.
@@ -70,5 +70,10 @@ void addLineToMacro(Macro* macro, const char* line);
  * Frees all memory used by the macro list.
  */
 void freeMacros(void);
+
+/*
+ * Prints all macros and their contents (for debugging).
+ */
+void printAllMacros(void);
 
 #endif /* PRE_ASSEMBLER_H */
