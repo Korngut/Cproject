@@ -4,12 +4,15 @@
 #include <string.h>
 #include "../headers/global.h"
 #include "../headers/errors.h"
-#include "../headers/preproc.h"
 
+/* קבועים עבור זיהוי מאקרו */
 #define MACRO_START "mcro"
 #define MACRO_END "mcroend"
+
+/* קיבולת התחלתית של מערך השורות במאקרו */
 #define INITIAL_MACRO_LINES_CAPACITY 10
 
+/* ראש הרשימה המקושרת של המאקרואים */
 static Macro *macroListHead = NULL;
 
 /* אם strdup לא מוגדר, מגדירים פונקציה משלנו */
@@ -26,6 +29,7 @@ char* my_strdup(const char* src) {
 #define strdup my_strdup
 #endif
 
+/* עותק בטוח של מחרוזת עם בדיקת שגיאות */
 static char* safe_strdup(const char* src, const char* context) {
     char* copy;
     if (!src) return NULL;
@@ -36,6 +40,7 @@ static char* safe_strdup(const char* src, const char* context) {
     return copy;
 }
 
+/* מסיר רווחים וטאבים מתחילת וסוף שורה */
 void trimWhitespace(char *line) {
     char *start;
     char *end;
@@ -54,6 +59,7 @@ void trimWhitespace(char *line) {
     }
 }
 
+/* בודק האם שורה מתחילה בקידומת מסוימת, תוך התעלמות מרווחים בהתחלה */
 int startsWith(const char *line, const char *prefix) {
     size_t plen;
     if (!line || !prefix) return 0;
@@ -62,6 +68,7 @@ int startsWith(const char *line, const char *prefix) {
     return strncmp(line, prefix, plen) == 0;
 }
 
+/* בודק האם שורה היא תחילת הגדרת מאקרו */
 int isMacroDefinitionStart(const char *line) {
     size_t len;
     if (!line) return 0;
@@ -74,6 +81,7 @@ int isMacroDefinitionStart(const char *line) {
     return 0;
 }
 
+/* בודק האם שורה היא סוף הגדרת מאקרו */
 int isMacroDefinitionEnd(const char *line) {
     size_t len;
     if (!line) return 0;
@@ -86,6 +94,7 @@ int isMacroDefinitionEnd(const char *line) {
     return 0;
 }
 
+/* כותב שורה לקובץ פלט, מוסיף תו מעבר שורה אם אין כזה */
 void writeLine(FILE *output, const char *line) {
     size_t len;
     if (!output || !line || *line == '\0') return;
@@ -94,6 +103,7 @@ void writeLine(FILE *output, const char *line) {
     if (len == 0 || line[len - 1] != '\n') fputc('\n', output);
 }
 
+/* מחפש מאקרו לפי שם ברשימה המקושרת */
 Macro* findMacro(const char* name) {
     Macro *curr;
     if (!name) return NULL;
@@ -105,6 +115,7 @@ Macro* findMacro(const char* name) {
     return NULL;
 }
 
+/* מוסיף מאקרו חדש לרשימה, מחזיר מצביע למאקרו או NULL במקרה של כשל */
 Macro* addMacro(const char* name) {
     Macro *macro;
     if (!name || findMacro(name)) return NULL;
@@ -136,6 +147,7 @@ Macro* addMacro(const char* name) {
     return macro;
 }
 
+/* מוסיף שורה למאקרו קיים, מטפל בהקצאת זיכרון מחדש במידת הצורך */
 void addLineToMacro(Macro* macro, const char* line) {
     int newCap;
     char **newLines;
@@ -146,6 +158,7 @@ void addLineToMacro(Macro* macro, const char* line) {
         newLines = (char**)realloc(macro->lines, newCap * sizeof(char*));
         if (!newLines) {
             fprintf(stderr, ERR_MEMORY_ALLOCATION_FAILED, "addLineToMacro (realloc)");
+            /* אם נכשל, נמשיך עם הקיבולת הקודמת - לא מושלם אבל מונע דליפת זיכרון */
             return;
         }
         macro->lines = newLines;
@@ -153,10 +166,14 @@ void addLineToMacro(Macro* macro, const char* line) {
     }
 
     macro->lines[macro->lineCount] = safe_strdup(line, "addLineToMacro (strdup)");
-    if (!macro->lines[macro->lineCount]) return;
+    if (!macro->lines[macro->lineCount]) {
+        /* אם strdup נכשל, נחזיר ונשאיר את המאקרו במצבו הנוכחי */
+        return;
+    }
     macro->lineCount++;
 }
 
+/* משחרר את כל הזיכרון שהוקצה למאקרואים */
 void freeMacros(void) {
     Macro *curr;
     Macro *next;
@@ -176,6 +193,7 @@ void freeMacros(void) {
     macroListHead = NULL;
 }
 
+/* מדפיס את כל המאקרואים שהוגדרו (לצרכי בדיקה) */
 void printAllMacros(void) {
     Macro *curr;
     int count = 0;
@@ -196,6 +214,7 @@ void printAllMacros(void) {
     printf("Total macros: %d\n", count);
 }
 
+/* מעבד קריאה למאקרו ומדפיס את תוכנו לקובץ הפלט */
 void processMacroCall(FILE *output, const char *macroName, int lineNum) {
     Macro *macro;
     int i;
@@ -210,10 +229,12 @@ void processMacroCall(FILE *output, const char *macroName, int lineNum) {
     }
 }
 
+/* מעבד שורה רגילה ומדפיס אותה לקובץ הפלט */
 void processNormalLine(FILE *output, const char *line) {
     writeLine(output, line);
 }
 
+/* מנתח שורה אחת, בודק האם זו הגדרת מאקרו, קריאה למאקרו או שורה רגילה */
 void parseLine(char *line, FILE *output, int *inMacro, Macro **currentMacro, int lineNum) {
     char lineCopy[MAX_LENGTH_FILE];
     Macro *macro;
@@ -221,8 +242,8 @@ void parseLine(char *line, FILE *output, int *inMacro, Macro **currentMacro, int
 
     if (!line) return;
 
-    strncpy(lineCopy, line, MAX_LENGTH_FILE - 1);
-    lineCopy[MAX_LENGTH_FILE - 1] = '\0';
+    /* שימוש בטוח יותר ב-snprintf במקום strncpy */
+    snprintf(lineCopy, MAX_LENGTH_FILE, "%s", line);
     trimWhitespace(lineCopy);
 
     if (!(*inMacro) && isMacroDefinitionStart(lineCopy)) {
@@ -259,6 +280,7 @@ void parseLine(char *line, FILE *output, int *inMacro, Macro **currentMacro, int
     }
 }
 
+/* הפונקציה הראשית שמריצה את הקדם-מעבד על קובץ נתון */
 void runPreAssembler(const char *filename) {
     FILE *input;
     char outFilename[FILENAME_MAX];
@@ -276,8 +298,7 @@ void runPreAssembler(const char *filename) {
         return;
     }
 
-    /* C90 אין snprintf, משתמשים ב-sprintf */
-    sprintf(outFilename, "%s.am", filename);
+    snprintf(outFilename, FILENAME_MAX, "%s.am", filename);
 
     output = fopen(outFilename, "w");
     if (!output) {
