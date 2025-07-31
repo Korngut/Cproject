@@ -3,5 +3,8 @@ project(C)
 
 set(CMAKE_WIN32_EXECUTABLE OFF)
 
-add_executable(C main.c
-        preproc/preproc.c)
+add_executable(C
+        main.c
+        preproc/preproc.c
+        firstPass/firstPass.c)
+
